@@ -14,6 +14,7 @@ import gzip
 #from train_saia_wac import get_filemax,make_word2feat_dict,make_train,make_subdf,make_wordlist,is_relational,get_refexp
 from sklearn import linear_model
 import numpy as np
+import numpy.lib.recfunctions
 import argparse
 import sys
 from scipy.spatial import distance as dist
@@ -40,16 +41,25 @@ def load_region_data(data_path='../data/',items=[]):
 
     
     feat_path = data_path+'Xcolorhist3d_v1.npz'
+    with codecs.open(data_path+'image_regions.txt') as f:
+        img_reg = f.readlines()
+    img_region = [img.split('.')[0] for img in img_reg]
     X = np.load(feat_path)
     X = X['arr_0']
     print(X.shape)
-    
-    testindex = np.random.randint(X.shape[0],size=1000)
-    trainindex = [x for x in range(X.shape[0]) if not x in testindex]
-    # @Kristin: hier müsstest du die Daten so splitten, dass unsere Items im testindex sind!
+
+    test_list = []
+    for img in img_region:
+        for ix in range(len(X)):
+            if str(int(X[ix][1]))+'_'+str(int(X[ix][2])) == img:
+                test_list.append(X[ix])
+    test_list = np.asarray(test_list)
+    np.random.seed(0)
+    testindex = np.random.randint(X.shape[0],size=970)
+    trainindex = [x for x in range(X.shape[0]) if not x in testindex and x not in test_list]
 
     Xtrain = X[trainindex]
-    Xtest = X[testindex]
+    Xtest = np.concatenate((X[testindex], test_list), axis= 0)
     print("Xtrain",Xtrain.shape)
     print("Xtest",Xtest.shape)
 
