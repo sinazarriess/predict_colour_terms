@@ -1,6 +1,7 @@
 from __future__ import division
 
 import matplotlib
+import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 #import wacgen
@@ -65,6 +66,26 @@ def load_region_data(data_path='../data/',items=[]):
 
     return (Xtrain,Xtest)
 
+# def reuse_model(M_test=[], saved_model='model.json', saved_weights='model.h5'):
+#
+#     if len(M_test) > 0:
+#         X_test = M_test[~np.isnan(M_test).any(axis=1)][:, 3:]
+#         y_test = M_test[~np.isnan(M_test).any(axis=1)][:, 0]
+#         Y_test = np_utils.to_categorical(y_test, len(colwords))
+#
+#     # load json and create model
+#     json_file = open(saved_model, 'r')
+#     loaded_model_json = json_file.read()
+#     json_file.close()
+#     loaded_model = model_from_json(loaded_model_json)
+#     # load weights into new model
+#     loaded_model.load_weights(saved_weights)
+#     print("Loaded model from disk")
+#
+#     score = model.evaluate(X_test, Y_test, batch_size=batch_size, verbose=1)
+#     print('Test score:', score)
+#
+#     return model
 
 def train_region_model(M_train,M_test=[]):
     X_train = M_train[~np.isnan(M_train).any(axis=1)][:,3:]
@@ -75,7 +96,7 @@ def train_region_model(M_train,M_test=[]):
         X_test = M_test[~np.isnan(M_test).any(axis=1)][:,3:]
         y_test = M_test[~np.isnan(M_test).any(axis=1)][:,0]
         Y_test = np_utils.to_categorical(y_test, len(colwords))
-    
+
     print('Building model...')
     model = Sequential()
     model.add(Dense(240, input_shape=(X_train.shape[1],)))
@@ -92,10 +113,33 @@ def train_region_model(M_train,M_test=[]):
     history = model.fit(X_train, Y_train, epochs=epochs, batch_size=batch_size, verbose=0, validation_split=0.1)
     #history = model.fit(X_train, Y_train, nb_epoch=nb_epoch, batch_size=batch_size, verbose=0, show_accuracy=True, validation_split=0.1)
 
+    # serialize model to JSON
+    #model_json = model.to_json()
+    #with open("model.json", "w") as json_file:
+    #    json_file.write(model_json)
+    # serialize weights to HDF5
+    #model.save_weights("model.h5")
+    #print("Saved model to disk")
+
     if len(M_test) >0:
         score = model.evaluate(X_test, Y_test, batch_size=batch_size, verbose=1)
         print('Test score:', score)
         #print('Test accuracy:', score[1])
-    
+
     return model
 
+def predict_color(model, M_test):
+    X_test = M_test[~np.isnan(M_test).any(axis=1)][:, 3:]
+    y_test = M_test[~np.isnan(M_test).any(axis=1)][:, 0]
+    Y_test = np_utils.to_categorical(y_test, len(colwords))
+    M_anno = []
+    batch_size = 36
+
+    pred = model.predict(X_test, batch_size = batch_size, verbose= 0)
+    X_test_anno = np.hstack([pred, X_test])
+    M_anno.append(X_test_anno)
+
+    M_anno = np.vstack(M_anno)
+    print("Collection Test Splits", M_anno.shape)
+
+    return M_anno
